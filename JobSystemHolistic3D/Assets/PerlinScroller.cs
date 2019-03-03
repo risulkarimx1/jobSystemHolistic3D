@@ -2,6 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using  UnityEngine.Jobs;
+using  Unity.Jobs;
+
 
 public class PerlinScroller : MonoBehaviour
 {
@@ -11,17 +14,31 @@ public class PerlinScroller : MonoBehaviour
     public int layer = 3;
 
     private GameObject[] cubes;
+    
+    // adding for job system
+    private Transform[] cubeTransforms;
+    private TransformAccessArray cubeTransformAccessArray;
+    private PositionUpdateJob cubeJob;
+    private JobHandle cubePositionJobHandle;
 
     private void Awake()
     {
         cubeCount = (int) (width * height * layer);
         cubes = new GameObject[cubeCount];
+        // adding for job system
+        cubeTransforms = new Transform[cubeCount];
     }
 
     // Start is called before the first frame update
     void Start()
     {
         cubes = CreateCubes(cubeCount);
+        // adding for job system
+        for (int i = 0; i < cubeCount; i++)
+        {
+            cubeTransforms[i] = cubes[i].transform;
+        }
+        cubeTransformAccessArray = new TransformAccessArray(cubeTransforms);
     }
 
     private GameObject[] CreateCubes(int count)
@@ -42,6 +59,15 @@ public class PerlinScroller : MonoBehaviour
         }
         GameObject.Destroy(cubeToCopy);
         return cubes;
+    }
+    
+    
+    struct PositionUpdateJob: IJobParallelForTransform
+    {
+        public void Execute(int index, TransformAccess transform)
+        {
+           
+        }
     }
 
     // Update is called once per frame
