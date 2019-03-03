@@ -64,9 +64,16 @@ public class PerlinScroller : MonoBehaviour
     
     struct PositionUpdateJob: IJobParallelForTransform
     {
-        public void Execute(int index, TransformAccess transform)
+        public int height, width, layer, xoffset, zoffset;
+        public void Execute(int i, TransformAccess transform)
         {
-           
+            int x = i / (width * layer);
+            int z = (i - x * height * layer) / layer;
+            int yoffset = i - x * width * layer - z * layer;
+            transform.position = new Vector3(x,
+                GeneratePerlinHeight(x+xoffset,z+zoffset)+yoffset,
+                z+zoffset
+            );
         }
     }
 
@@ -74,36 +81,40 @@ public class PerlinScroller : MonoBehaviour
     private int xoffset;
     void Update()
     {
-        //int xoffset = (int) (this.transform.position.x - width / 2.0f);
-        xoffset++;
-        int zoffset = (int) (this.transform.position.z - height / 2.0f);
-
-        for (int i = 0; i < cubeCount; i++)
+        cubeJob = new PositionUpdateJob()
         {
-            int x = i / (width * layer);
-            int z = (i - x * height * layer) / layer;
-            int yoffset = i - x * width * layer - z * layer;
-            cubes[i].transform.position = new Vector3(x,
-                GeneratePerlinHeight(x+xoffset,z+zoffset)+yoffset,
-                z+zoffset
-                );
-        }
+            xoffset = xoffset++,
+            zoffset = (int) (this.transform.position.z-height/2.0f),
+            height = height,
+            width = width,
+            layer = layer
+        };
 
+        cubePositionJobHandle = cubeJob.Schedule(cubeTransformAccessArray);
+        
+        
         if (Input.GetKey(KeyCode.UpArrow))
             this.transform.Translate(0,0,2);
         else if (Input.GetKey(KeyCode.DownArrow))
-        
             this.transform.Translate(0,0,-2);
          else if (Input.GetKey(KeyCode.LeftArrow))
-        
             this.transform.Translate(-2,0,0);
         else if (Input.GetKey(KeyCode.RightArrow))
-        
             this.transform.Translate(2,0,0);
         
     }
 
-    private float GeneratePerlinHeight(float posx, float posz)
+    private void LateUpdate()
+    {
+        cubePositionJobHandle.Complete();
+    }
+
+    private void OnDestroy()
+    {
+        cubeTransformAccessArray.Dispose();
+    }
+
+    public static float GeneratePerlinHeight(float posx, float posz)
     {
         float smooth = 0.03f;
         float heightMult = 5;
